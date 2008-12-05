@@ -1,7 +1,7 @@
 /** -----------------------------------------------------------
 * XML Loader
 * -----------------------------------------------------------
-* Description: Loads and Parses the XML Fil
+* Description: Loads and Parses the XML File
 * - ---------------------------------------------------------
 * Created by: chrisaiv@gmail.com
 * Modified by: 
