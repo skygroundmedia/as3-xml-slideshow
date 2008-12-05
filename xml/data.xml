@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <images>
 	<image>
-		<caption>A Different View of the Sun</caption>
+		<caption><i>A Different View of the Sun</i></caption>
 		<uri>http://www.nasa.gov/multimedia/imagegallery/image_feature_1143.html</uri>
 		<src>http://www.nasa.gov/images/content/265001main_image_1143_428-321.jpg</src>
 	</image>
 	<image>
-		<caption>The Unveiling</caption>
+		<caption>The <b>Unveiling</b></caption>
 		<uri>http://www.nasa.gov/multimedia/imagegallery/image_feature_1149.html</uri>
 		<src>http://www.nasa.gov/images/content/266117main_image_1149_428-321.jpg</src>
 	</image>
