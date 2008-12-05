@@ -24,6 +24,8 @@ package src
 
 		public function XMLLoader(target:IEventDispatcher=null)
 		{
+			XML.ignoreWhitespace = false;
+			XML.prettyPrinting = false;
 			super(target);
 		}
 
