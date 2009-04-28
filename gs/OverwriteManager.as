@@ -1,15 +1,15 @@
 ﻿/*
-VERSION: 0.96
-DATE: 8/31/2008
+VERSION: 3.12
+DATE: 2/9/2009
 ACTIONSCRIPT VERSION: 3.0 (AS2 version is available)
 UPDATES & DOCUMENTATION AT: http://blog.greensock.com/overwritemanager/
 DESCRIPTION:
-	OverwriteManager is included in all TweenLite/TweenFilterLite/TweenMax downloads and allows you to control how tweens with 
+	OverwriteManager is included in all TweenLite/TweenMax downloads and allows you to control how tweens with 
 	overlapping properties are handled. Without OverwriteManager, tweens of the same object are always completely overwritten 
 	unless you set overwrite:0 (previously overwrite:false which still works by the way).
 		
 		TweenLite.to(mc, 1, {x:100, y:200});
-		TweenLite.to(mc, 1, {alpha:0.5 delay:2}); //Without OverwriteManager, this tween immediately overwrites the previous one
+		TweenLite.to(mc, 1, {alpha:0.5, delay:2}); //Without OverwriteManager, this tween immediately overwrites the previous one
 		
 	So even though there are no overlapping properties in the previous example, the 2nd tween would overwrite the first. 
 	The primary reason for this has to do with speed and file size. But if you're willing to sacrifice	a little speed and file size, 
@@ -22,9 +22,9 @@ DESCRIPTION:
 	extremely small footprint and blistering speed. Even 1Kb would represent a 33% increase in file size, and some developers have no 
 	use for the capabilities of this class. 
 	
-	So OverwriteManager is an optional enhancement to TweenLite and TweenFilterLite, but it is automatically included with TweenMax
+	So OverwriteManager is an optional enhancement to TweenLite, but it is automatically included with TweenMax
 	without any additional steps required on your part. That also means that if you use TweenMax anywhere in your project, 
-	OverwriteManager will automatically get initted and will therefore affect TweenLite and TweenFilterLite, making their
+	OverwriteManager will automatically get initted and will therefore affect TweenLite, making its
 	default mode "AUTO" instead of "ALL". 
 	
 
@@ -34,7 +34,7 @@ USAGE:
 		- NONE (0): No tweens are overwritten. This is the fastest mode, but you need to be careful not to create any tweens with
 					overlapping properties, otherwise they'll conflict with each other.
 						
-		- ALL (1): Similar to the default behavior of TweenLite/TweenFilterLite/TweenMax where all tweens of the same object are completely
+		- ALL (1): Similar to the default behavior of TweenLite/TweenMax where all tweens of the same object are completely
 				   overwritten immediately when the tween is created. 
 						
 						TweenLite.to(mc, 1, {x:100, y:200});
@@ -51,7 +51,7 @@ USAGE:
 						TweenLite.to(mc, 1, {x:300, delay:2}); //does NOT overwrite the previous tween because the first tween will have finished by the time this one begins.
 		
 		
-	To add OverwriteManager's capabilities to TweenLite and TweenFilterLite, you must init() the class once (typically on the first frame of your file) like so:
+	To add OverwriteManager's capabilities to TweenLite, you must init() the class once (typically on the first frame of your file) like so:
 			
 		OverwriteManager.init();
 		
@@ -88,22 +88,23 @@ EXAMPLES:
 		OverwriteManager.mode = OverwriteManager.ALL;
 		
 	The mode can be changed anytime.
-		
 	
 
 NOTES:
 	- This class adds about 1Kb to your SWF.
 
-CODED BY: Jack Doyle, jack@greensock.com
-Copyright 2008, GreenSock (This work is subject to the terms in http://www.greensock.com/terms_of_use.html.)
+AUTHOR: Jack Doyle, jack@greensock.com
+Copyright 2009, GreenSock. All rights reserved. This work is subject to the terms in http://www.greensock.com/terms_of_use.html or for corporate Club GreenSock members, the software agreement that was issued with the corporate membership.
 */
 
 package gs {
 	import flash.errors.*;
 	import flash.utils.*;
 	
+	import gs.utils.tween.*;
+	
 	public class OverwriteManager {
-		public static const version:Number = 0.96;
+		public static const version:Number = 3.12;
 		public static const NONE:int = 0;
 		public static const ALL:int = 1;
 		public static const AUTO:int = 2;
@@ -112,7 +113,7 @@ package gs {
 		public static var enabled:Boolean;
 		
 		public static function init($mode:int=2):int {
-			if (TweenLite.version < 8.14) {
+			if (TweenLite.version < 10.09) {
 				trace("TweenLite warning: Your TweenLite class needs to be updated to work with OverwriteManager (or you may need to clear your ASO files). Please download and install the latest version from http://www.tweenlite.com.");
 			}
 			TweenLite.overwriteManager = OverwriteManager;
@@ -121,63 +122,68 @@ package gs {
 			return mode;
 		}
 		
-		public static function manageOverwrites($instance:TweenLite, $objTweens:Dictionary):void {
-			var vars:Object = $instance.vars;
+		public static function manageOverwrites($tween:TweenLite, $targetTweens:Array):void {
+			var vars:Object = $tween.vars;
 			var m:int = (vars.overwrite == undefined) ? mode : int(vars.overwrite);
-			if (m < 2) {
+			if (m < 2 || $targetTweens == null) {
 				return;
 			}
 			
-			var tw:Object, startTime:Number = $instance.startTime, a:Array = [], i:int;
-			for each (tw in $objTweens) {
-				if (tw != $instance && tw.startTime <= startTime) {
-					a[a.length] = tw;
+			var startTime:Number = $tween.startTime, a:Array = [], i:int, tween:TweenLite, index:int = -1;
+			for (i = $targetTweens.length - 1; i > -1; i--) {
+				tween = $targetTweens[i];
+				if (tween == $tween) {
+					index = i;
+				} else if (i < index && tween.startTime <= startTime && tween.startTime + (tween.duration * 1000 / tween.combinedTimeScale) > startTime) {
+					a[a.length] = tween;
 				}
 			}
-			if (a.length == 0) {
+			if (a.length == 0 || $tween.tweens.length == 0) {
 				return;
 			}
-			
 			if (m == AUTO) {
-				if (vars.isTV == true) {
-					vars = vars.exposedProps; //Enables use of the TweenLiteVars, TweenFilterLiteVars, and TweenMaxVars utility classes.
-				}
-				var v:Object = {}, p:String;
-				for (p in vars) {
-					if (p == "ease" || p == "delay" || p == "overwrite" || p == "onComplete" || p == "onCompleteParams" || p == "runBackwards" || p == "persist" || p == "onUpdate" || p == "onUpdateParams" || p == "timeScale" || p == "onStart" || p == "onStartParams" || p == "renderOnStart" || p == "proxiedEase" || p == "easeParams" || p == "onCompleteAll" || p == "onCompleteAllParams" || p == "yoyo" || p == "loop") {
-						//ignore
+				var tweens:Array = $tween.tweens, v:Object = {}, j:int, ti:TweenInfo, overwriteProps:Array;
+				for (i = tweens.length - 1; i > -1; i--) {
+					ti = tweens[i];
+					if (ti.isPlugin) { //is a plugin with multiple overwritable properties
+						if (ti.name == "_MULTIPLE_") {
+							overwriteProps = ti.target.overwriteProps;
+							for (j = overwriteProps.length - 1; j > -1; j--) {
+								v[overwriteProps[j]] = true;
+							}
+						} else {
+							v[ti.name] = true;
+						}
+						v[ti.target.propName] = true;
 					} else {
-						v[p] = 1;
+						v[ti.name] = true;
 					}
 				}
+				
 				for (i = a.length - 1; i > -1; i--) {
-					a[i].killVars(v);
+					killVars(v, a[i].exposedVars, a[i].tweens);
 				}
 			} else {
 				for (i = a.length - 1; i > -1; i--) {
-					$objTweens[a[i]] = null; //prevents garbage collection issues.
-					delete $objTweens[a[i]];
+					a[i].enabled = false; //flags for garbage collection
 				}
 			}
 		}
 		
-		public static function killVars($killVars:Object, $vars:Object, $tweens:Array, $subTweens:Array, $filters:Array):void {
-			for (var i:int = $subTweens.length - 1; i > -1; i--) {
-				if ($killVars[$subTweens[i].name] != undefined) {
-					$subTweens.splice(i, 1);
-				}
-			}
+		public static function killVars($killVars:Object, $vars:Object, $tweens:Array):void {
+			var i:int, p:String, ti:TweenInfo;
 			for (i = $tweens.length - 1; i > -1; i--) {
-				if ($killVars[$tweens[i].name] != undefined) {
+				ti = $tweens[i];
+				if (ti.name in $killVars) {
 					$tweens.splice(i, 1);
+				} else if (ti.isPlugin && ti.name == "_MULTIPLE_") { //is a plugin with multiple overwritable properties
+					ti.target.killProps($killVars);
+					if (ti.target.overwriteProps.length == 0) {
+						$tweens.splice(i, 1);
+					}
 				}
 			}
-			for (i = $filters.length - 1; i > -1; i--) {
-				if ($killVars[$filters[i].name] != undefined) {
-					$filters.splice(i, 1);
-				}
-			}
-			for (var p:String in $killVars) {
+			for (p in $killVars) {
 				delete $vars[p];
 			}
 		}
